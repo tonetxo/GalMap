@@ -30,10 +30,9 @@ class FeatureRepository(
             if (cached != null && cached.covers(lat, lon, radiusM, clock())) return cached.features
 
             val fetchRadius = radiusM + MARGIN_M
-            val fresh = CachedArea(lat, lon, fetchRadius, clock(), client.fetch(lat, lon, fetchRadius))
-            area = fresh
+            val fresh = CachedArea(CACHE_VERSION, lat, lon, fetchRadius, clock(), client.fetch(lat, lon, fetchRadius))
             saveToDisk(fresh)
-            fresh.features
+            fresh.ranked().also { area = it }.features
         }
 
     private suspend fun loadFromDisk(): CachedArea? {
@@ -41,7 +40,7 @@ class FeatureRepository(
         diskLoaded = true
         return withContext(Dispatchers.IO) {
             runCatching { json.decodeFromString<CachedArea>(cacheFile.readText()) }.getOrNull()
-        }?.also { area = it }
+        }?.takeIf { it.version == CACHE_VERSION }?.ranked()?.also { area = it }
     }
 
     private suspend fun saveToDisk(cached: CachedArea) = withContext(Dispatchers.IO) {
@@ -50,12 +49,16 @@ class FeatureRepository(
 
     @Serializable
     private data class CachedArea(
+        val version: Int = 0,
         val centerLat: Double,
         val centerLon: Double,
         val radiusM: Double,
         val fetchedAtMs: Long,
         val features: List<GeoFeature>,
     ) {
+        /** Importance is derived data, so it is computed on load and rule changes need no migration. */
+        suspend fun ranked() = withContext(Dispatchers.Default) { copy(features = ImportanceRanker.rank(features)) }
+
         fun covers(lat: Double, lon: Double, radius: Double, nowMs: Long): Boolean =
             nowMs - fetchedAtMs < MAX_AGE_MS &&
                 GeoArMath.distanceMeters(centerLat, centerLon, lat, lon) + radius <= radiusM
@@ -65,5 +68,8 @@ class FeatureRepository(
         /** Extra radius downloaded so that walking around does not trigger new requests. */
         const val MARGIN_M = 5_000.0
         const val MAX_AGE_MS = 30L * 24 * 60 * 60 * 1000
+
+        /** Bump when [GeoFeature] gains data that old caches lack. */
+        const val CACHE_VERSION = 3
     }
 }

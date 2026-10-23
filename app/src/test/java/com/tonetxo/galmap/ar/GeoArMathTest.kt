@@ -119,7 +119,7 @@ class GeoArMathTest {
         val declination = -2.0 // magnetic north is 2° west of true north
         val scene = ArProjector.place(observer, listOf(peak), 50_000.0, declination)
         // Camera pointing at magnetic 2° → true north: the peak must be centred.
-        val label = ArProjector.project(scene, facing(2.0), 1000.0, 2000.0, 1000.0, 0.0).single()
+        val label = ArProjector.project(scene, facing(2.0), 0, 1000.0, 2000.0, 1000.0, 0.0).single()
         assertEquals(500.0, label.x.toDouble(), 0.5)
         assertEquals(0.0, GeoArMath.signedDeltaDegrees(0.0, ArProjector.trueHeadingDegrees(facing(2.0), declination, 0.0)), 1e-4)
     }

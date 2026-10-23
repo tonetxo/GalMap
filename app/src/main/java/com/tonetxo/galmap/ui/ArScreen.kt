@@ -2,25 +2,34 @@ package com.tonetxo.galmap.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,18 +47,22 @@ import kotlin.math.roundToInt
 private val CompassHeight = 40.dp
 private val PanelColor = Color.Black.copy(alpha = 0.55f)
 
-private const val MIN_RADIUS_KM = 5
-private const val MAX_RADIUS_KM = 40
-private const val RADIUS_STEP_KM = 5
-
 @Composable
 fun ArScreen(viewModel: ArViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val density = LocalDensity.current
     val topReservedPx = WindowInsets.statusBars.getTop(density) + with(density) { CompassHeight.toPx() }
+    val displayRotation = rememberDisplayRotation()
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(displayRotation) { viewModel.setDisplayRotation(displayRotation) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        CameraPreview(onIntrinsics = viewModel::setCameraIntrinsics, modifier = Modifier.fillMaxSize())
+        CameraPreview(
+            displayRotation = displayRotation,
+            onIntrinsics = viewModel::setCameraIntrinsics,
+            modifier = Modifier.fillMaxSize(),
+        )
 
         ArOverlay(
             labels = state.labels,
@@ -77,62 +90,47 @@ fun ArScreen(viewModel: ArViewModel = viewModel()) {
             }
         }
 
-        ControlPanel(
+        StatusBar(
             state = state,
+            onOpenSettings = { showSettings = true },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                .padding(12.dp)
+                .widthIn(max = 480.dp),
+        )
+    }
+
+    if (showSettings) {
+        SettingsSheet(
+            settings = state.settings,
             onRadiusChange = viewModel::setRadiusKm,
+            onTypeToggle = viewModel::setTypeEnabled,
+            onMinImportanceChange = viewModel::setMinImportance,
             onResetOffset = viewModel::resetHeadingOffset,
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp),
+            onDismiss = { showSettings = false },
         )
     }
 }
 
 @Composable
-private fun ControlPanel(
-    state: ArUiState,
-    onRadiusChange: (Int) -> Unit,
-    onResetOffset: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
+private fun StatusBar(state: ArUiState, onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
         modifier
             .fillMaxWidth()
             .background(PanelColor, RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(statusText(state), color = Color.White, style = MaterialTheme.typography.bodySmall)
-
         Text(
-            stringResource(R.string.radius_label, state.radiusKm),
+            statusText(state),
             color = Color.White,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Slider(
-            value = state.radiusKm.toFloat(),
-            onValueChange = { onRadiusChange(it.roundToInt()) },
-            valueRange = MIN_RADIUS_KM.toFloat()..MAX_RADIUS_KM.toFloat(),
-            steps = (MAX_RADIUS_KM - MIN_RADIUS_KM) / RADIUS_STEP_KM - 1,
-        )
-
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.calibration_label, state.headingOffsetDeg),
-                color = Color.White,
-                style = MaterialTheme.typography.labelLarge,
-            )
-            TextButton(onClick = onResetOffset, enabled = state.headingOffsetDeg != 0f) {
-                Text(stringResource(R.string.calibration_reset))
-            }
-        }
-        Text(
-            stringResource(R.string.calibration_hint),
-            color = Color.White.copy(alpha = 0.7f),
             style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
         )
+        IconButton(onClick = onOpenSettings) {
+            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_title), tint = Color.White)
+        }
     }
 }
 

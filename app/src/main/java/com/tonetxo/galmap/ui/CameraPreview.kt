@@ -13,6 +13,9 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -26,7 +29,11 @@ import kotlin.math.min
 
 /** Full-screen back camera preview. Reports the lens intrinsics needed to place labels. */
 @Composable
-fun CameraPreview(onIntrinsics: (CameraIntrinsics?) -> Unit, modifier: Modifier = Modifier) {
+fun CameraPreview(
+    displayRotation: Int,
+    onIntrinsics: (CameraIntrinsics?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnIntrinsics by rememberUpdatedState(onIntrinsics)
@@ -34,7 +41,15 @@ fun CameraPreview(onIntrinsics: (CameraIntrinsics?) -> Unit, modifier: Modifier 
         PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
     }
 
+    var preview by remember { mutableStateOf<Preview?>(null) }
+    val currentRotation by rememberUpdatedState(displayRotation)
+
     AndroidView(factory = { previewView }, modifier = modifier)
+
+    // A 90°→270° flip keeps the activity alive, so the use case must be told explicitly.
+    LaunchedEffect(preview, displayRotation) {
+        preview?.targetRotation = displayRotation
+    }
 
     DisposableEffect(lifecycleOwner) {
         val providerFuture = ProcessCameraProvider.getInstance(context)
@@ -42,16 +57,18 @@ fun CameraPreview(onIntrinsics: (CameraIntrinsics?) -> Unit, modifier: Modifier 
         providerFuture.addListener({
             val cameraProvider = providerFuture.get().also { provider = it }
             // 4:3 matches the sensor, so the stream is not cropped before the view crops it.
-            val preview = Preview.Builder()
+            val newPreview = Preview.Builder()
                 .setResolutionSelector(
                     ResolutionSelector.Builder()
                         .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
                         .build()
                 )
+                .setTargetRotation(currentRotation)
                 .build()
-            preview.setSurfaceProvider(previewView.surfaceProvider)
+            newPreview.setSurfaceProvider(previewView.surfaceProvider)
             cameraProvider.unbindAll()
-            val camera = cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview)
+            val camera = cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, newPreview)
+            preview = newPreview
             currentOnIntrinsics(readIntrinsics(camera.cameraInfo))
         }, ContextCompat.getMainExecutor(context))
 

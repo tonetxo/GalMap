@@ -1,5 +1,6 @@
 package com.tonetxo.galmap.ar
 
+import com.tonetxo.galmap.data.FeatureFilter
 import com.tonetxo.galmap.data.GeoFeature
 import com.tonetxo.galmap.data.UserLocation
 import kotlin.math.max
@@ -41,9 +42,11 @@ object ArProjector {
         features: List<GeoFeature>,
         radiusM: Double,
         declinationDeg: Double,
+        filter: FeatureFilter = FeatureFilter(),
     ): PlacedScene {
         val observerAlt = observer.altitudeM ?: 0.0
         val placed = features.mapNotNull { f ->
+            if (!filter.accepts(f)) return@mapNotNull null
             val distance = GeoArMath.distanceMeters(observer.lat, observer.lon, f.lat, f.lon)
             if (distance > radiusM || distance < MIN_DISTANCE_M) return@mapNotNull null
             // Without a known elevation, put the label on the horizon rather than at sea level.
@@ -67,6 +70,7 @@ object ArProjector {
     fun project(
         scene: PlacedScene,
         rotation: FloatArray,
+        displayQuarterTurns: Int,
         widthPx: Double,
         heightPx: Double,
         focalPx: Double,
@@ -75,10 +79,11 @@ object ArProjector {
         val correction = headingOffsetDeg - scene.declinationDeg
         val cx = widthPx / 2
         val cy = heightPx / 2
+        val screenRotation = GeoArMath.remapForDisplay(rotation, displayQuarterTurns)
         return scene.features.asSequence()
             .mapNotNull { p ->
                 val enu = GeoArMath.enuDirection(p.bearingDeg + correction, p.elevationDeg)
-                val point = GeoArMath.project(rotation, enu, focalPx, cx, cy) ?: return@mapNotNull null
+                val point = GeoArMath.project(screenRotation, enu, focalPx, cx, cy) ?: return@mapNotNull null
                 if (point.x !in 0.0..widthPx || point.y !in 0.0..heightPx) null else p to point
             }
             .sortedByDescending { (p, _) -> p.priority }
@@ -91,9 +96,9 @@ object ArProjector {
     fun trueHeadingDegrees(rotation: FloatArray, declinationDeg: Double, headingOffsetDeg: Double): Double =
         GeoArMath.normalizeDegrees(GeoArMath.cameraHeadingDegrees(rotation) + declinationDeg - headingOffsetDeg)
 
-    /** Higher and closer features first. */
+    /** More important, higher and closer features first. */
     private fun priority(feature: GeoFeature, distanceM: Double): Double {
         val elevation = (feature.elevationM ?: UNKNOWN_ELEVATION_RANK_M).coerceAtLeast(0.0)
-        return (elevation + 100.0) / max(distanceM / 1000.0, 0.5)
+        return (feature.importance + 1) * (elevation + 100.0) / max(distanceM / 1000.0, 0.5)
     }
 }

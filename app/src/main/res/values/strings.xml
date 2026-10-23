@@ -16,7 +16,20 @@
         <item quantity="other">%1$d lugares · GPS ±%2$d m</item>
     </plurals>
 
+    <string name="settings_title">Axustes</string>
     <string name="radius_label">Raio: %1$d km</string>
+    <string name="filter_types">Tipos de lugar</string>
+    <string name="type_peak">Montes</string>
+    <string name="type_saddle">Colados</string>
+    <string name="type_waterfall">Fervenzas</string>
+    <string name="type_cape">Cabos</string>
+    <string name="type_island">Illas</string>
+    <string name="importance_label">Importancia mínima: %1$s</string>
+    <string name="importance_all">Todos</string>
+    <string name="importance_relevant">Relevantes</string>
+    <string name="importance_notable">Destacados</string>
+    <string name="importance_main">Principais</string>
+    <string name="importance_hint">Un monte é máis importante canto máis lonxe está o monte máis alto máis próximo. As illas son destacadas; illotes e cabos só saen en «Todos». Calquera lugar con artigo na Wikipedia é principal.</string>
     <string name="calibration_label">Corrección do compás: %1$+.1f°</string>
     <string name="calibration_reset">Restablecer</string>
     <string name="calibration_hint">Arrastra en horizontal para aliñar as etiquetas co relevo</string>

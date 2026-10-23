@@ -10,7 +10,10 @@ import com.tonetxo.galmap.ar.ArLabel
 import com.tonetxo.galmap.ar.ArProjector
 import com.tonetxo.galmap.ar.GeoArMath
 import com.tonetxo.galmap.ar.PlacedScene
+import com.tonetxo.galmap.data.FeatureFilter
 import com.tonetxo.galmap.data.FeatureRepository
+import com.tonetxo.galmap.data.FeatureType
+import com.tonetxo.galmap.data.Importance
 import com.tonetxo.galmap.data.GeoFeature
 import com.tonetxo.galmap.data.UserLocation
 import com.tonetxo.galmap.sensors.DeviceOrientation
@@ -32,10 +35,19 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import java.io.File
 import kotlin.math.atan
 
-data class Viewport(val width: Int, val height: Int)
+data class Viewport(
+    val width: Int = 0,
+    val height: Int = 0,
+    /** Display rotation in quarter turns (Surface.ROTATION_* values). */
+    val quarterTurns: Int = 0,
+) {
+    val isReady get() = width > 0 && height > 0
+}
 
 data class CameraIntrinsics(val focalMm: Double, val sensorLongMm: Double, val sensorShortMm: Double)
 
@@ -54,8 +66,13 @@ data class ArUiState(
     val placesInRadius: Int = 0,
     val loading: Boolean = false,
     val error: String? = null,
+    val settings: Settings = Settings(),
+)
+
+data class Settings(
     val radiusKm: Int = DEFAULT_RADIUS_KM,
     val headingOffsetDeg: Float = 0f,
+    val filter: FeatureFilter = FeatureFilter(),
 )
 
 private const val DEFAULT_RADIUS_KM = 20
@@ -76,7 +93,8 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
 
     private val radiusKm = MutableStateFlow(prefs.getInt(KEY_RADIUS_KM, DEFAULT_RADIUS_KM))
     private val headingOffsetDeg = MutableStateFlow(prefs.getFloat(KEY_HEADING_OFFSET, 0f))
-    private val viewport = MutableStateFlow<Viewport?>(null)
+    private val filter = MutableStateFlow(loadFilter())
+    private val viewport = MutableStateFlow(Viewport())
     private val intrinsics = MutableStateFlow<CameraIntrinsics?>(null)
 
     /** Last focal length used, to convert calibration drags from pixels to degrees. */
@@ -120,19 +138,19 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), FeaturesState())
 
-    private val scene = combine(location, features, radiusKm) { loc, fs, r ->
-        loc?.let { ArProjector.place(it, fs.items, r * 1000.0, declination(it)) }
+    private val scene = combine(location, features, radiusKm, filter) { loc, fs, r, flt ->
+        loc?.let { ArProjector.place(it, fs.items, r * 1000.0, declination(it), flt) }
     }.flowOn(Dispatchers.Default)
 
     private val frame = combine(scene, orientation, viewport, intrinsics, headingOffsetDeg) { sc, ori, vp, intr, offset ->
-        if (vp == null || ori == null) return@combine Frame()
+        if (!vp.isReady || ori == null) return@combine Frame()
         val focal = intr?.let {
             GeoArMath.focalLengthPx(vp.width.toDouble(), vp.height.toDouble(), it.focalMm, it.sensorLongMm, it.sensorShortMm)
         } ?: GeoArMath.focalFromHorizontalFov(vp.width.toDouble(), FALLBACK_HFOV_DEG)
         focalPx = focal
         val scn = sc ?: PlacedScene(emptyList(), 0.0)
         Frame(
-            labels = ArProjector.project(scn, ori.rotation, vp.width.toDouble(), vp.height.toDouble(), focal, offset.toDouble()),
+            labels = ArProjector.project(scn, ori.rotation, vp.quarterTurns, vp.width.toDouble(), vp.height.toDouble(), focal, offset.toDouble()),
             trueHeadingDeg = ArProjector.trueHeadingDegrees(ori.rotation, scn.declinationDeg, offset.toDouble()),
             focalPx = focal,
             compassUnreliable = ori.compassUnreliable,
@@ -141,7 +159,7 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
     }.flowOn(Dispatchers.Default)
 
     val uiState: StateFlow<ArUiState> =
-        combine(frame, features, location, radiusKm, headingOffsetDeg) { f, fs, loc, r, offset ->
+        combine(frame, features, location, combine(radiusKm, headingOffsetDeg, filter, ::Settings)) { f, fs, loc, settings ->
             ArUiState(
                 labels = f.labels,
                 trueHeadingDeg = f.trueHeadingDeg,
@@ -151,13 +169,41 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
                 placesInRadius = f.placesInRadius,
                 loading = fs.loading,
                 error = fs.error,
-                radiusKm = r,
-                headingOffsetDeg = offset,
+                settings = settings,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ArUiState())
 
     fun setViewport(width: Int, height: Int) {
-        if (width > 0 && height > 0) viewport.value = Viewport(width, height)
+        if (width > 0 && height > 0) viewport.update { it.copy(width = width, height = height) }
+    }
+
+    fun setDisplayRotation(quarterTurns: Int) {
+        viewport.update { it.copy(quarterTurns = quarterTurns) }
+    }
+
+    fun setTypeEnabled(type: FeatureType, enabled: Boolean) {
+        updateFilter { it.copy(types = if (enabled) it.types + type else it.types - type) }
+    }
+
+    fun setMinImportance(level: Int) {
+        updateFilter { it.copy(minImportance = level.coerceIn(Importance.MIN, Importance.MAX)) }
+    }
+
+    private fun updateFilter(transform: (FeatureFilter) -> FeatureFilter) {
+        val updated = filter.updateAndGet(transform)
+        prefs.edit {
+            putStringSet(KEY_FILTER_TYPES, updated.types.map { it.name }.toSet())
+            putInt(KEY_MIN_IMPORTANCE, updated.minImportance)
+        }
+    }
+
+    private fun loadFilter(): FeatureFilter {
+        val default = FeatureFilter()
+        val types = prefs.getStringSet(KEY_FILTER_TYPES, null)
+            ?.mapNotNull { name -> FeatureType.entries.find { it.name == name } }
+            ?.toSet()
+            ?: default.types
+        return FeatureFilter(types, prefs.getInt(KEY_MIN_IMPORTANCE, default.minImportance))
     }
 
     fun setCameraIntrinsics(value: CameraIntrinsics?) {
@@ -194,6 +240,8 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
     private companion object {
         const val KEY_RADIUS_KM = "radius_km"
         const val KEY_HEADING_OFFSET = "heading_offset_deg"
+        const val KEY_FILTER_TYPES = "filter_types"
+        const val KEY_MIN_IMPORTANCE = "min_importance"
         const val STOP_TIMEOUT_MS = 5_000L
         const val RADIUS_DEBOUNCE_MS = 400L
         const val REFETCH_DISTANCE_M = 300.0

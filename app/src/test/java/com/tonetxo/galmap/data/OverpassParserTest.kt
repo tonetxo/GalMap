@@ -22,6 +22,7 @@ class OverpassParserTest {
 
         assertEquals(3, features.size)
         val (peak, island, cape) = features
+        assertEquals(FeatureType.ISLAND, island.type)
         assertEquals("Pico Sacro", peak.name)
         assertEquals(FeatureType.PEAK, peak.type)
         assertEquals(533.0, peak.elevationM!!, 1e-9)

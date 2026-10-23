@@ -14,7 +14,20 @@
         <item quantity="other">%1$d places · GPS ±%2$d m</item>
     </plurals>
 
+    <string name="settings_title">Settings</string>
     <string name="radius_label">Radius: %1$d km</string>
+    <string name="filter_types">Place types</string>
+    <string name="type_peak">Peaks</string>
+    <string name="type_saddle">Passes</string>
+    <string name="type_waterfall">Waterfalls</string>
+    <string name="type_cape">Capes</string>
+    <string name="type_island">Islands</string>
+    <string name="importance_label">Minimum importance: %1$s</string>
+    <string name="importance_all">All</string>
+    <string name="importance_relevant">Relevant</string>
+    <string name="importance_notable">Notable</string>
+    <string name="importance_main">Main</string>
+    <string name="importance_hint">A peak matters more the farther away the nearest higher peak is. Islands are notable; islets and capes only show with “All”. Any place with a Wikipedia article is main.</string>
     <string name="calibration_label">Compass correction: %1$+.1f°</string>
     <string name="calibration_reset">Reset</string>
     <string name="calibration_hint">Drag horizontally to align labels with the terrain</string>

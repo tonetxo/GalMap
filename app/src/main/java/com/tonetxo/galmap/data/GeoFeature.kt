@@ -10,6 +10,20 @@ enum class FeatureType(val emoji: String, val atSeaLevel: Boolean) {
     WATERFALL("💧", false),
     CAPE("🌊", true),
     ISLAND("🏝️", true),
+    ISLET("🪨", true),
+    ;
+
+    /** Type shown in the filter: volcanoes are grouped with peaks and islets with islands. */
+    val filterType: FeatureType
+        get() = when (this) {
+            VOLCANO -> PEAK
+            ISLET -> ISLAND
+            else -> this
+        }
+
+    companion object {
+        val filterable = entries.filter { it.filterType == it }
+    }
 }
 
 @Serializable
@@ -21,7 +35,24 @@ data class GeoFeature(
     val lon: Double,
     /** Metres above sea level, or null when unknown. */
     val elevationM: Double?,
+    val wikidata: String? = null,
+    val wikipedia: String? = null,
+    /** From [Importance.MIN] to [Importance.MAX]; see [ImportanceRanker]. */
+    val importance: Int = Importance.MIN,
 )
+
+object Importance {
+    const val MIN = 0
+    const val MAX = 3
+}
+
+data class FeatureFilter(
+    val types: Set<FeatureType> = FeatureType.filterable.toSet(),
+    val minImportance: Int = Importance.MIN,
+) {
+    fun accepts(feature: GeoFeature): Boolean =
+        feature.type.filterType in types && feature.importance >= minImportance
+}
 
 data class UserLocation(
     val lat: Double,

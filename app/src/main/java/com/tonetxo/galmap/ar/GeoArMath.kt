@@ -4,6 +4,7 @@ import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -79,6 +80,21 @@ object GeoArMath {
         return ScreenPoint(cx + focalPx * dx / depth, cy - focalPx * dy / depth)
     }
 
+    /**
+     * Re-expresses [rotation] so its first two columns are the screen's right and up axes
+     * when the display is rotated [quarterTurns] × 90° (Display.getRotation / 90), which is
+     * what SensorManager.remapCoordinateSystem does. The optical axis (Z) is unchanged.
+     */
+    fun remapForDisplay(rotation: FloatArray, quarterTurns: Int): FloatArray {
+        val r = rotation
+        return when (Math.floorMod(quarterTurns, 4)) {
+            1 -> floatArrayOf(r[1], -r[0], r[2], r[4], -r[3], r[5], r[7], -r[6], r[8])
+            2 -> floatArrayOf(-r[0], -r[1], r[2], -r[3], -r[4], r[5], -r[6], -r[7], r[8])
+            3 -> floatArrayOf(-r[1], r[0], r[2], -r[4], r[3], r[5], -r[7], r[6], r[8])
+            else -> r
+        }
+    }
+
     /** Heading of the camera's optical axis in the rotation matrix's frame, in [0, 360). */
     fun cameraHeadingDegrees(rotation: FloatArray): Double =
         normalizeDegrees(Math.toDegrees(atan2(-rotation[2].toDouble(), -rotation[5].toDouble())))
@@ -91,8 +107,9 @@ object GeoArMath {
         widthPx / 2 / tan(Math.toRadians(fovDeg / 2))
 
     /**
-     * Focal length in screen pixels for a portrait preview that fills the view (center crop).
-     * The preview stream with [streamAspect] is itself a center crop of the active sensor area.
+     * Focal length in screen pixels for a preview that fills the view (center crop), in
+     * either orientation. The preview stream with [streamAspect] is itself a center crop of
+     * the active sensor area.
      */
     fun focalLengthPx(
         viewWidthPx: Double,
@@ -109,8 +126,8 @@ object GeoArMath {
         } else {
             visibleShort = sensorLongMm / streamAspect
         }
-        // In portrait the sensor's long side runs along the screen height.
-        val pxPerMm = max(viewWidthPx / visibleShort, viewHeightPx / visibleLong)
+        // The preview is rotated so the sensor's long side runs along the view's long side.
+        val pxPerMm = max(max(viewWidthPx, viewHeightPx) / visibleLong, min(viewWidthPx, viewHeightPx) / visibleShort)
         return focalMm * pxPerMm
     }
 }

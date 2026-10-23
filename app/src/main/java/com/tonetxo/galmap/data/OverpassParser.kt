@@ -38,7 +38,16 @@ object OverpassParser {
         val lat = element.lat ?: element.center?.lat ?: return null
         val lon = element.lon ?: element.center?.lon ?: return null
         val elevation = parseElevation(tags["ele"]) ?: if (type.atSeaLevel) 0.0 else null
-        return GeoFeature("${element.type}/${element.id}", name, type, lat, lon, elevation)
+        return GeoFeature(
+            id = "${element.type}/${element.id}",
+            name = name,
+            type = type,
+            lat = lat,
+            lon = lon,
+            elevationM = elevation,
+            wikidata = tags["wikidata"],
+            wikipedia = tags["wikipedia"],
+        )
     }
 
     private fun featureType(tags: Map<String, String>): FeatureType? = when {
@@ -46,7 +55,8 @@ object OverpassParser {
         tags["natural"] == "volcano" -> FeatureType.VOLCANO
         tags["natural"] == "saddle" || tags["mountain_pass"] == "yes" -> FeatureType.SADDLE
         tags["natural"] == "cape" -> FeatureType.CAPE
-        tags["place"] == "island" || tags["place"] == "islet" -> FeatureType.ISLAND
+        tags["place"] == "island" -> FeatureType.ISLAND
+        tags["place"] == "islet" -> FeatureType.ISLET
         tags["waterway"] == "waterfall" -> FeatureType.WATERFALL
         else -> null
     }
