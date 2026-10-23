@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -55,6 +56,7 @@ fun ArScreen(viewModel: ArViewModel = viewModel()) {
     val density = LocalDensity.current
     val topReservedPx = WindowInsets.statusBars.getTop(density) + with(density) { CompassHeight.toPx() }
     val displayRotation = rememberDisplayRotation()
+    val context = LocalContext.current
     var showSettings by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(displayRotation) { viewModel.setDisplayRotation(displayRotation) }
@@ -107,6 +109,7 @@ fun ArScreen(viewModel: ArViewModel = viewModel()) {
         if (selected != null) {
             AlignCard(
                 feature = selected,
+                onShowMap = { openInMap(context, selected) },
                 onAlign = viewModel::alignWithSelected,
                 onCancel = { viewModel.select(null) },
                 modifier = bottomModifier,
@@ -129,7 +132,13 @@ fun ArScreen(viewModel: ArViewModel = viewModel()) {
 }
 
 @Composable
-private fun AlignCard(feature: GeoFeature, onAlign: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) {
+private fun AlignCard(
+    feature: GeoFeature,
+    onShowMap: () -> Unit,
+    onAlign: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier
             .fillMaxWidth()
@@ -147,6 +156,7 @@ private fun AlignCard(feature: GeoFeature, onAlign: () -> Unit, onCancel: () -> 
             style = MaterialTheme.typography.bodySmall,
         )
         Row(Modifier.align(Alignment.End)) {
+            TextButton(onClick = onShowMap) { Text(stringResource(R.string.show_on_map)) }
             TextButton(onClick = onCancel) { Text(stringResource(R.string.align_cancel)) }
             TextButton(onClick = onAlign) { Text(stringResource(R.string.align_button)) }
         }

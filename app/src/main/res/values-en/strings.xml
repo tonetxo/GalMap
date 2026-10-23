@@ -34,6 +34,7 @@
     <string name="align_hint">Centre %1$s in the crosshair and tap Align</string>
     <string name="align_button">Align</string>
     <string name="align_cancel">Cancel</string>
+    <string name="show_on_map">Show on map</string>
     <string name="compass_warning">🧲 Magnetic interference: heading held by the gyroscope</string>
 
     <string-array name="cardinal_points">
