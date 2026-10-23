@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="permissions_title">Permissions required</string>
+    <string name="permissions_body">GalMap uses the camera to show the landscape and your location to know which peaks, islands and capes are around you.</string>
+    <string name="permissions_grant">Grant permissions</string>
+    <string name="permissions_denied">A permission is missing. If no dialog appears, enable it in the app settings.</string>
+    <string name="permissions_settings">Open settings</string>
+
+    <string name="status_waiting_gps">Waiting for GPS…</string>
+    <string name="status_loading">Downloading places…</string>
+    <string name="status_error">Download error: %1$s</string>
+    <plurals name="status_ready">
+        <item quantity="one">%1$d place · GPS ±%2$d m</item>
+        <item quantity="other">%1$d places · GPS ±%2$d m</item>
+    </plurals>
+
+    <string name="radius_label">Radius: %1$d km</string>
+    <string name="calibration_label">Compass correction: %1$+.1f°</string>
+    <string name="calibration_reset">Reset</string>
+    <string name="calibration_hint">Drag horizontally to align labels with the terrain</string>
+    <string name="compass_warning">Unreliable compass: move the phone in a figure 8</string>
+
+    <string-array name="cardinal_points">
+        <item>N</item>
+        <item>NE</item>
+        <item>E</item>
+        <item>SE</item>
+        <item>S</item>
+        <item>SW</item>
+        <item>W</item>
+        <item>NW</item>
+    </string-array>
+</resources>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GalMap</string>
+
+    <string name="permissions_title">Permisos necesarios</string>
+    <string name="permissions_body">GalMap usa a cámara para amosar a paisaxe e a túa localización para saber que montes, illas e cabos tes arredor.</string>
+    <string name="permissions_grant">Conceder permisos</string>
+    <string name="permissions_denied">Falta algún permiso. Se non aparece o diálogo, actívao nos axustes da app.</string>
+    <string name="permissions_settings">Abrir axustes</string>
+
+    <string name="status_waiting_gps">Buscando sinal GPS…</string>
+    <string name="status_loading">Descargando lugares…</string>
+    <string name="status_error">Erro ao descargar: %1$s</string>
+    <plurals name="status_ready">
+        <item quantity="one">%1$d lugar · GPS ±%2$d m</item>
+        <item quantity="other">%1$d lugares · GPS ±%2$d m</item>
+    </plurals>
+
+    <string name="radius_label">Raio: %1$d km</string>
+    <string name="calibration_label">Corrección do compás: %1$+.1f°</string>
+    <string name="calibration_reset">Restablecer</string>
+    <string name="calibration_hint">Arrastra en horizontal para aliñar as etiquetas co relevo</string>
+    <string name="compass_warning">Compás pouco fiable: move o móbil debuxando un 8</string>
+
+    <string-array name="cardinal_points">
+        <item>N</item>
+        <item>NL</item>
+        <item>L</item>
+        <item>SL</item>
+        <item>S</item>
+        <item>SO</item>
+        <item>O</item>
+        <item>NO</item>
+    </string-array>
+</resources>
