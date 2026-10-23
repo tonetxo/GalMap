@@ -1,7 +1,9 @@
 package com.tonetxo.galmap.ar
 
+import com.tonetxo.galmap.data.FeatureFilter
 import com.tonetxo.galmap.data.FeatureType
 import com.tonetxo.galmap.data.GeoFeature
+import com.tonetxo.galmap.data.Importance
 import com.tonetxo.galmap.data.UserLocation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -117,7 +119,7 @@ class GeoArMathTest {
         val observer = UserLocation(42.0, -8.0, 0.0, 5f)
         val peak = GeoFeature("node/1", "Pico", FeatureType.PEAK, 42.1, -8.0, 0.0) // due true north
         val declination = -2.0 // magnetic north is 2° west of true north
-        val scene = ArProjector.place(observer, listOf(peak), 50_000.0, declination)
+        val scene = ArProjector.place(observer, listOf(peak), 50_000.0, declination, FeatureFilter(minImportance = Importance.MIN))
         // Camera pointing at magnetic 2° → true north: the peak must be centred.
         val label = ArProjector.project(scene, facing(2.0), 0, 1000.0, 2000.0, 1000.0, 0.0).single()
         assertEquals(500.0, label.x.toDouble(), 0.5)

@@ -58,7 +58,7 @@ class ImportanceRankerTest {
 
     @Test
     fun `filter groups islets with islands and volcanoes with peaks`() {
-        val filter = FeatureFilter(types = setOf(FeatureType.ISLAND))
+        val filter = FeatureFilter(types = setOf(FeatureType.ISLAND), minImportance = Importance.MIN)
         val islet = GeoFeature("i", "i", FeatureType.ISLET, 0.0, 0.0, 0.0)
         val volcano = GeoFeature("v", "v", FeatureType.VOLCANO, 0.0, 0.0, 100.0)
         assertEquals(true, filter.accepts(islet))
