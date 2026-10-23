@@ -33,7 +33,7 @@
     <string name="calibration_label">Corrección do compás: %1$+.1f°</string>
     <string name="calibration_reset">Restablecer</string>
     <string name="calibration_hint">Arrastra en horizontal para aliñar as etiquetas co relevo</string>
-    <string name="compass_warning">Compás pouco fiable: move o móbil debuxando un 8</string>
+    <string name="compass_warning">🧲 Interferencia magnética: rumbo fixado co xiroscopio</string>
 
     <string-array name="cardinal_points">
         <item>N</item>

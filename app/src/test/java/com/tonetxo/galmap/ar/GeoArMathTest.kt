@@ -101,6 +101,15 @@ class GeoArMathTest {
     }
 
     @Test
+    fun `yaw rotation adds to the camera heading and keeps pitch`() {
+        val turned = GeoArMath.rotateYaw(facing(10.0), 20.0)
+        assertEquals(30.0, GeoArMath.cameraHeadingDegrees(turned), 1e-4)
+        assertEquals(0.0, GeoArMath.cameraPitchDegrees(turned), 1e-4)
+        val back = GeoArMath.rotateYaw(turned, -30.0)
+        for (i in facingNorth.indices) assertEquals(facingNorth[i], back[i], 1e-5f)
+    }
+
+    @Test
     fun `rotated camera centres the target it faces`() {
         val p = GeoArMath.project(facing(120.0), GeoArMath.enuDirection(120.0, 0.0), 800.0, 400.0, 900.0)!!
         assertEquals(400.0, p.x, 1e-3)

@@ -95,6 +95,22 @@ object GeoArMath {
         }
     }
 
+    /**
+     * Turns the world frame of [rotation] about the vertical so every heading grows by
+     * [yawDeg] (clockwise seen from above). Used to align the gyro-only frame with north.
+     */
+    fun rotateYaw(rotation: FloatArray, yawDeg: Double): FloatArray {
+        val o = Math.toRadians(yawDeg)
+        val c = cos(o).toFloat()
+        val s = sin(o).toFloat()
+        val r = rotation
+        return floatArrayOf(
+            c * r[0] + s * r[3], c * r[1] + s * r[4], c * r[2] + s * r[5],
+            -s * r[0] + c * r[3], -s * r[1] + c * r[4], -s * r[2] + c * r[5],
+            r[6], r[7], r[8],
+        )
+    }
+
     /** Heading of the camera's optical axis in the rotation matrix's frame, in [0, 360). */
     fun cameraHeadingDegrees(rotation: FloatArray): Double =
         normalizeDegrees(Math.toDegrees(atan2(-rotation[2].toDouble(), -rotation[5].toDouble())))

@@ -80,12 +80,16 @@ fun ArScreen(viewModel: ArViewModel = viewModel()) {
 
         Column(Modifier.fillMaxWidth().statusBarsPadding()) {
             CompassTape(state.trueHeadingDeg, state.focalPx, Modifier.fillMaxWidth().height(CompassHeight))
-            if (state.compassUnreliable) {
+            if (state.magneticInterference) {
                 Text(
                     text = stringResource(R.string.compass_warning),
                     color = Color.Black,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth().background(Color(0xFFFFC247)).padding(8.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 6.dp)
+                        .background(Color(0xFFFFC247).copy(alpha = 0.9f), RoundedCornerShape(50))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
         }

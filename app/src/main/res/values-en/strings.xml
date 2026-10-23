@@ -31,7 +31,7 @@
     <string name="calibration_label">Compass correction: %1$+.1f°</string>
     <string name="calibration_reset">Reset</string>
     <string name="calibration_hint">Drag horizontally to align labels with the terrain</string>
-    <string name="compass_warning">Unreliable compass: move the phone in a figure 8</string>
+    <string name="compass_warning">🧲 Magnetic interference: heading held by the gyroscope</string>
 
     <string-array name="cardinal_points">
         <item>N</item>

@@ -17,6 +17,7 @@ import com.tonetxo.galmap.data.Importance
 import com.tonetxo.galmap.data.GeoFeature
 import com.tonetxo.galmap.data.UserLocation
 import com.tonetxo.galmap.sensors.DeviceOrientation
+import com.tonetxo.galmap.sensors.ExpectedField
 import com.tonetxo.galmap.sensors.LocationTracker
 import com.tonetxo.galmap.sensors.OrientationTracker
 import kotlinx.coroutines.CancellationException
@@ -61,7 +62,7 @@ data class ArUiState(
     val labels: List<ArLabel> = emptyList(),
     val trueHeadingDeg: Double? = null,
     val focalPx: Double = 0.0,
-    val compassUnreliable: Boolean = false,
+    val magneticInterference: Boolean = false,
     val location: UserLocation? = null,
     val placesInRadius: Int = 0,
     val loading: Boolean = false,
@@ -81,7 +82,7 @@ private data class Frame(
     val labels: List<ArLabel> = emptyList(),
     val trueHeadingDeg: Double? = null,
     val focalPx: Double = 0.0,
-    val compassUnreliable: Boolean = false,
+    val magneticInterference: Boolean = false,
     val placesInRadius: Int = 0,
 )
 
@@ -105,7 +106,11 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
     private val location: StateFlow<UserLocation?> = LocationTracker(app).locations()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
-    private val orientation: StateFlow<DeviceOrientation?> = OrientationTracker(app).orientation()
+    /** Geomagnetic model at the last fix, to detect magnetic interference. */
+    @Volatile
+    private var expectedField: ExpectedField? = null
+
+    private val orientation: StateFlow<DeviceOrientation?> = OrientationTracker(app).orientation { expectedField }
         .catch { /* No rotation sensor: labels simply never appear. */ }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
@@ -139,7 +144,11 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), FeaturesState())
 
     private val scene = combine(location, features, radiusKm, filter) { loc, fs, r, flt ->
-        loc?.let { ArProjector.place(it, fs.items, r * 1000.0, declination(it), flt) }
+        loc?.let {
+            val field = geomagneticField(it)
+            expectedField = ExpectedField(field.fieldStrength / 1000f, field.inclination) // nT → µT
+            ArProjector.place(it, fs.items, r * 1000.0, field.declination.toDouble(), flt)
+        }
     }.flowOn(Dispatchers.Default)
 
     private val frame = combine(scene, orientation, viewport, intrinsics, headingOffsetDeg) { sc, ori, vp, intr, offset ->
@@ -153,7 +162,7 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
             labels = ArProjector.project(scn, ori.rotation, vp.quarterTurns, vp.width.toDouble(), vp.height.toDouble(), focal, offset.toDouble()),
             trueHeadingDeg = ArProjector.trueHeadingDegrees(ori.rotation, scn.declinationDeg, offset.toDouble()),
             focalPx = focal,
-            compassUnreliable = ori.compassUnreliable,
+            magneticInterference = ori.magneticInterference,
             placesInRadius = scn.features.size,
         )
     }.flowOn(Dispatchers.Default)
@@ -164,7 +173,7 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
                 labels = f.labels,
                 trueHeadingDeg = f.trueHeadingDeg,
                 focalPx = f.focalPx,
-                compassUnreliable = f.compassUnreliable,
+                magneticInterference = f.magneticInterference,
                 location = loc,
                 placesInRadius = f.placesInRadius,
                 loading = fs.loading,
@@ -229,13 +238,13 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit { putFloat(KEY_HEADING_OFFSET, 0f) }
     }
 
-    private fun declination(loc: UserLocation): Double =
+    private fun geomagneticField(loc: UserLocation) =
         GeomagneticField(
             loc.lat.toFloat(),
             loc.lon.toFloat(),
             (loc.altitudeM ?: 0.0).toFloat(),
             System.currentTimeMillis(),
-        ).declination.toDouble()
+        )
 
     private companion object {
         const val KEY_RADIUS_KM = "radius_km"
