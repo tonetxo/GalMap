@@ -18,7 +18,9 @@ from pathlib import Path
 
 # Galicia plus ~40 km so views towards Asturias, León, Zamora and Portugal are covered.
 SOUTH, WEST, NORTH, EAST = 41.40, -9.70, 44.00, -6.20
-TILE_ROWS, TILE_COLS = 4, 4
+TILE_ROWS, TILE_COLS = 6, 6
+# Downloaded tiles are kept here so an interrupted run resumes where it stopped.
+TILE_CACHE = Path("build/dataset-tiles")
 
 ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
@@ -41,7 +43,7 @@ QUERY = """[out:json][timeout:180][bbox:{bbox}];
 out center tags;"""
 
 
-def fetch_tile(s, w, n, e, attempts=6):
+def fetch_tile(s, w, n, e, attempts=12):
     data = urllib.parse.urlencode({"data": QUERY.format(bbox=f"{s:.4f},{w:.4f},{n:.4f},{e:.4f}")}).encode()
     for attempt in range(attempts):
         endpoint = ENDPOINTS[attempt % len(ENDPOINTS)]
@@ -51,7 +53,7 @@ def fetch_tile(s, w, n, e, attempts=6):
                 return json.load(resp)["elements"]
         except Exception as exc:  # noqa: BLE001 - any failure means "try the next mirror"
             print(f"    {endpoint.split('/')[2]}: {exc}", flush=True)
-            time.sleep(10 * (attempt + 1))
+            time.sleep(min(20 * (attempt + 1), 120))
     raise RuntimeError(f"Tile {s},{w},{n},{e} failed after {attempts} attempts")
 
 
@@ -71,7 +73,14 @@ def main():
         for col in range(TILE_COLS):
             s, w = SOUTH + row * d_lat, WEST + col * d_lon
             print(f"tile {row * TILE_COLS + col + 1}/{TILE_ROWS * TILE_COLS} ({s:.2f},{w:.2f})", flush=True)
-            for el in fetch_tile(s, w, s + d_lat, w + d_lon):
+            cached = TILE_CACHE / f"{row}_{col}.json"
+            if cached.exists():
+                tile = json.loads(cached.read_text())
+            else:
+                tile = fetch_tile(s, w, s + d_lat, w + d_lon)
+                TILE_CACHE.mkdir(parents=True, exist_ok=True)
+                cached.write_text(json.dumps(tile))
+            for el in tile:
                 elements[(el["type"], el["id"])] = slim(el)
             print(f"  total so far: {len(elements)}", flush=True)
 
