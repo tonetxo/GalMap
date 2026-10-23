@@ -44,11 +44,13 @@ data class GeoFeature(
 object Importance {
     const val MIN = 0
     const val MAX = 3
+    const val DEFAULT = 1
 }
 
 data class FeatureFilter(
     val types: Set<FeatureType> = FeatureType.filterable.toSet(),
-    val minImportance: Int = Importance.MIN,
+    /** Hides islets, capes and minor sub-summits until the user asks for everything. */
+    val minImportance: Int = Importance.DEFAULT,
 ) {
     fun accepts(feature: GeoFeature): Boolean =
         feature.type.filterType in types && feature.importance >= minImportance
