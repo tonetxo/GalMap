@@ -1,5 +1,6 @@
 package com.tonetxo.galmap.data
 
+import com.tonetxo.galmap.ar.GeoArMath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -8,6 +9,7 @@ import okhttp3.Request
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.cos
 
 /** Queries the Overpass API, falling back to mirrors when a server is busy or down. */
 class OverpassClient(
@@ -48,17 +50,24 @@ class OverpassClient(
             "https://overpass-api.de/api/interpreter",
             "https://overpass.private.coffee/api/interpreter",
             "https://overpass.kumi.systems/api/interpreter",
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
         )
 
+        /**
+         * A bounding box is much cheaper for Overpass than `around` on ways and relations;
+         * the corners outside the circle are discarded later by distance.
+         */
         fun buildQuery(lat: Double, lon: Double, radiusM: Double): String {
-            val around = String.format(Locale.US, "around:%.0f,%.6f,%.6f", radiusM, lat, lon)
+            val dLat = Math.toDegrees(radiusM / GeoArMath.EARTH_RADIUS_M)
+            val dLon = dLat / cos(Math.toRadians(lat))
+            val bbox = String.format(Locale.US, "%.5f,%.5f,%.5f,%.5f", lat - dLat, lon - dLon, lat + dLat, lon + dLon)
             return """
-                [out:json][timeout:25];
+                [out:json][timeout:25][bbox:$bbox];
                 (
-                  nwr["natural"~"^(peak|volcano|saddle|cape)$"]["name"]($around);
-                  nwr["mountain_pass"="yes"]["name"]($around);
-                  nwr["place"~"^(island|islet)$"]["name"]($around);
-                  nwr["waterway"="waterfall"]["name"]($around);
+                  nwr["natural"~"^(peak|volcano|saddle|cape)$"]["name"];
+                  nwr["mountain_pass"="yes"]["name"];
+                  nwr["place"~"^(island|islet)$"]["name"];
+                  nwr["waterway"="waterfall"]["name"];
                 );
                 out center tags;
             """.trimIndent()
@@ -66,7 +75,7 @@ class OverpassClient(
 
         private fun defaultHttpClient() = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(35, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
             .build()
     }
 }

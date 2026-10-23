@@ -19,6 +19,7 @@ import com.tonetxo.galmap.sensors.OrientationTracker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -100,16 +101,22 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
         }
         combine(significantLocation, radiusKm.debounce(RADIUS_DEBOUNCE_MS)) { loc, r -> loc to r }
             .collectLatest { (loc, r) ->
-                current = current.copy(loading = true, error = null)
-                send(current)
-                current = try {
-                    FeaturesState(items = repository.featuresAround(loc.lat, loc.lon, r * 1000.0))
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    current.copy(loading = false, error = e.message ?: e.javaClass.simpleName)
+                // Public Overpass servers are often overloaded, so keep retrying until it works.
+                while (true) {
+                    current = current.copy(loading = true, error = null)
+                    send(current)
+                    try {
+                        current = FeaturesState(items = repository.featuresAround(loc.lat, loc.lon, r * 1000.0))
+                        send(current)
+                        break
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        current = current.copy(loading = false, error = e.message ?: e.javaClass.simpleName)
+                        send(current)
+                        delay(RETRY_DELAY_MS)
+                    }
                 }
-                send(current)
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), FeaturesState())
 
@@ -190,6 +197,7 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
         const val STOP_TIMEOUT_MS = 5_000L
         const val RADIUS_DEBOUNCE_MS = 400L
         const val REFETCH_DISTANCE_M = 300.0
+        const val RETRY_DELAY_MS = 30_000L
         const val FALLBACK_HFOV_DEG = 60.0
     }
 }
