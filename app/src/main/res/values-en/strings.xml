@@ -30,7 +30,10 @@
     <string name="importance_hint">A peak matters more the farther away the nearest higher peak is. Islands are notable; islets and capes only show with “All”. Any place with a Wikipedia article is main.</string>
     <string name="calibration_label">Compass correction: %1$+.1f°</string>
     <string name="calibration_reset">Reset</string>
-    <string name="calibration_hint">Drag horizontally to align labels with the terrain</string>
+    <string name="calibration_hint">Tap a label to align it with the real place, or drag horizontally</string>
+    <string name="align_hint">Centre %1$s in the crosshair and tap Align</string>
+    <string name="align_button">Align</string>
+    <string name="align_cancel">Cancel</string>
     <string name="compass_warning">🧲 Magnetic interference: heading held by the gyroscope</string>
 
     <string-array name="cardinal_points">

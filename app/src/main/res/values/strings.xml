@@ -32,7 +32,10 @@
     <string name="importance_hint">Un monte é máis importante canto máis lonxe está o monte máis alto máis próximo. As illas son destacadas; illotes e cabos só saen en «Todos». Calquera lugar con artigo na Wikipedia é principal.</string>
     <string name="calibration_label">Corrección do compás: %1$+.1f°</string>
     <string name="calibration_reset">Restablecer</string>
-    <string name="calibration_hint">Arrastra en horizontal para aliñar as etiquetas co relevo</string>
+    <string name="calibration_hint">Toca unha etiqueta para aliñala co lugar real, ou arrastra en horizontal</string>
+    <string name="align_hint">Centra %1$s na mira e preme Aliñar</string>
+    <string name="align_button">Aliñar</string>
+    <string name="align_cancel">Cancelar</string>
     <string name="compass_warning">🧲 Interferencia magnética: rumbo fixado co xiroscopio</string>
 
     <string-array name="cardinal_points">

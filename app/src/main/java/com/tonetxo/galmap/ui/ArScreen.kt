@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tonetxo.galmap.R
+import com.tonetxo.galmap.data.GeoFeature
 import kotlin.math.roundToInt
 
 private val CompassHeight = 40.dp
@@ -67,6 +69,8 @@ fun ArScreen(viewModel: ArViewModel = viewModel()) {
         ArOverlay(
             labels = state.labels,
             topReservedPx = topReservedPx,
+            selected = state.selected,
+            onLabelTap = viewModel::select,
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { viewModel.setViewport(it.width, it.height) }
@@ -94,15 +98,22 @@ fun ArScreen(viewModel: ArViewModel = viewModel()) {
             }
         }
 
-        StatusBar(
-            state = state,
-            onOpenSettings = { showSettings = true },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
-                .padding(12.dp)
-                .widthIn(max = 480.dp),
-        )
+        val bottomModifier = Modifier
+            .align(Alignment.BottomCenter)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+            .padding(12.dp)
+            .widthIn(max = 480.dp)
+        val selected = state.selected
+        if (selected != null) {
+            AlignCard(
+                feature = selected,
+                onAlign = viewModel::alignWithSelected,
+                onCancel = { viewModel.select(null) },
+                modifier = bottomModifier,
+            )
+        } else {
+            StatusBar(state = state, onOpenSettings = { showSettings = true }, modifier = bottomModifier)
+        }
     }
 
     if (showSettings) {
@@ -114,6 +125,31 @@ fun ArScreen(viewModel: ArViewModel = viewModel()) {
             onResetOffset = viewModel::resetHeadingOffset,
             onDismiss = { showSettings = false },
         )
+    }
+}
+
+@Composable
+private fun AlignCard(feature: GeoFeature, onAlign: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(PanelColor, RoundedCornerShape(12.dp))
+            .padding(start = 12.dp, end = 4.dp, top = 10.dp),
+    ) {
+        Text(
+            "${feature.type.emoji} ${feature.name}",
+            color = Color.White,
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Text(
+            stringResource(R.string.align_hint, feature.name),
+            color = Color.White.copy(alpha = 0.8f),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Row(Modifier.align(Alignment.End)) {
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.align_cancel)) }
+            TextButton(onClick = onAlign) { Text(stringResource(R.string.align_button)) }
+        }
     }
 }
 

@@ -10,12 +10,14 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 /**
- * Serves features around a point, hitting the network only when the requested circle
- * is not inside the last downloaded one. The last area is persisted so the app can
- * start without coverage in places it has already visited.
+ * Serves features around a point. Inside the bundled dataset (Galicia) everything is
+ * offline; elsewhere it hits Overpass only when the requested circle is not inside the last
+ * downloaded one. That last download is persisted so the app can start without coverage in
+ * places it has already visited.
  */
 class FeatureRepository(
     private val cacheFile: File,
+    private val bundled: BundledDataset? = null,
     private val client: OverpassClient = OverpassClient(),
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
@@ -26,10 +28,16 @@ class FeatureRepository(
 
     suspend fun featuresAround(lat: Double, lon: Double, radiusM: Double): List<GeoFeature> =
         mutex.withLock {
-            val cached = area ?: loadFromDisk()
-            if (cached != null && cached.covers(lat, lon, radiusM, clock())) return cached.features
+            area?.takeIf { it.covers(lat, lon, radiusM, clock()) }?.let { return it.features }
 
             val fetchRadius = radiusM + MARGIN_M
+            bundled?.featuresAround(lat, lon, fetchRadius)?.let { features ->
+                return CachedArea(CACHE_VERSION, lat, lon, fetchRadius, clock(), features)
+                    .ranked().also { area = it }.features
+            }
+
+            loadFromDisk()?.takeIf { it.covers(lat, lon, radiusM, clock()) }?.let { return it.features }
+
             val fresh = CachedArea(CACHE_VERSION, lat, lon, fetchRadius, clock(), client.fetch(lat, lon, fetchRadius))
             saveToDisk(fresh)
             fresh.ranked().also { area = it }.features

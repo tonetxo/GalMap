@@ -101,6 +101,14 @@ class GeoArMathTest {
     }
 
     @Test
+    fun `aligning with a target makes the true heading point at it`() {
+        val rotation = facing(47.0) // compass is off: the camera really faces the target at 85°
+        val declination = -1.5
+        val offset = ArProjector.headingOffsetToAlign(rotation, declination, 85.0)
+        assertEquals(85.0, ArProjector.trueHeadingDegrees(rotation, declination, offset), 1e-6)
+    }
+
+    @Test
     fun `yaw rotation adds to the camera heading and keeps pitch`() {
         val turned = GeoArMath.rotateYaw(facing(10.0), 20.0)
         assertEquals(30.0, GeoArMath.cameraHeadingDegrees(turned), 1e-4)

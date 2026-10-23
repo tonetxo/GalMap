@@ -96,6 +96,10 @@ object ArProjector {
     fun trueHeadingDegrees(rotation: FloatArray, declinationDeg: Double, headingOffsetDeg: Double): Double =
         GeoArMath.normalizeDegrees(GeoArMath.cameraHeadingDegrees(rotation) + declinationDeg - headingOffsetDeg)
 
+    /** Heading offset that makes the camera's true heading equal [targetBearingDeg]. */
+    fun headingOffsetToAlign(rotation: FloatArray, declinationDeg: Double, targetBearingDeg: Double): Double =
+        GeoArMath.signedDeltaDegrees(0.0, GeoArMath.cameraHeadingDegrees(rotation) + declinationDeg - targetBearingDeg)
+
     /** More important, higher and closer features first. */
     private fun priority(feature: GeoFeature, distanceM: Double): Double {
         val elevation = (feature.elevationM ?: UNKNOWN_ELEVATION_RANK_M).coerceAtLeast(0.0)

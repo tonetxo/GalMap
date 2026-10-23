@@ -10,6 +10,7 @@ import com.tonetxo.galmap.ar.ArLabel
 import com.tonetxo.galmap.ar.ArProjector
 import com.tonetxo.galmap.ar.GeoArMath
 import com.tonetxo.galmap.ar.PlacedScene
+import com.tonetxo.galmap.data.BundledDataset
 import com.tonetxo.galmap.data.FeatureFilter
 import com.tonetxo.galmap.data.FeatureRepository
 import com.tonetxo.galmap.data.FeatureType
@@ -68,6 +69,8 @@ data class ArUiState(
     val loading: Boolean = false,
     val error: String? = null,
     val settings: Settings = Settings(),
+    /** Feature the user tapped, to align the compass with it. */
+    val selected: GeoFeature? = null,
 )
 
 data class Settings(
@@ -90,11 +93,12 @@ private data class Frame(
 class ArViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = app.getSharedPreferences("galmap", Context.MODE_PRIVATE)
-    private val repository = FeatureRepository(File(app.filesDir, "features_cache.json"))
+    private val repository = FeatureRepository(File(app.filesDir, "features_cache.json"), BundledDataset(app.assets))
 
     private val radiusKm = MutableStateFlow(prefs.getInt(KEY_RADIUS_KM, DEFAULT_RADIUS_KM))
     private val headingOffsetDeg = MutableStateFlow(prefs.getFloat(KEY_HEADING_OFFSET, 0f))
     private val filter = MutableStateFlow(loadFilter())
+    private val selected = MutableStateFlow<GeoFeature?>(null)
     private val viewport = MutableStateFlow(Viewport())
     private val intrinsics = MutableStateFlow<CameraIntrinsics?>(null)
 
@@ -168,7 +172,7 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
     }.flowOn(Dispatchers.Default)
 
     val uiState: StateFlow<ArUiState> =
-        combine(frame, features, location, combine(radiusKm, headingOffsetDeg, filter, ::Settings)) { f, fs, loc, settings ->
+        combine(frame, features, location, combine(radiusKm, headingOffsetDeg, filter, ::Settings), selected) { f, fs, loc, settings, sel ->
             ArUiState(
                 labels = f.labels,
                 trueHeadingDeg = f.trueHeadingDeg,
@@ -179,6 +183,7 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
                 loading = fs.loading,
                 error = fs.error,
                 settings = settings,
+                selected = sel,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ArUiState())
 
@@ -231,6 +236,26 @@ class ArViewModel(app: Application) : AndroidViewModel(app) {
         val updated = GeoArMath.signedDeltaDegrees(0.0, (headingOffsetDeg.value + delta).toDouble()).toFloat()
         headingOffsetDeg.value = updated
         prefs.edit { putFloat(KEY_HEADING_OFFSET, updated) }
+    }
+
+    fun select(feature: GeoFeature?) {
+        selected.value = feature
+    }
+
+    /**
+     * The user has put [selected]'s real position under the crosshair: choose the offset that
+     * makes the camera's true heading equal the bearing to it (see ArProjector.trueHeadingDegrees).
+     */
+    fun alignWithSelected() {
+        val feature = selected.value ?: return
+        val loc = location.value ?: return
+        val ori = orientation.value ?: return
+        val bearing = GeoArMath.bearingDegrees(loc.lat, loc.lon, feature.lat, feature.lon)
+        val declination = geomagneticField(loc).declination.toDouble()
+        val offset = ArProjector.headingOffsetToAlign(ori.rotation, declination, bearing).toFloat()
+        headingOffsetDeg.value = offset
+        prefs.edit { putFloat(KEY_HEADING_OFFSET, offset) }
+        selected.value = null
     }
 
     fun resetHeadingOffset() {
