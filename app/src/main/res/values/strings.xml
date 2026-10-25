@@ -37,6 +37,7 @@
     <string name="align_button">Aliñar</string>
     <string name="align_cancel">Cancelar</string>
     <string name="show_on_map">Ver no mapa</string>
+    <string name="osm_attribution">Datos © colaboradores de OpenStreetMap, baixo licenza ODbL</string>
     <string name="compass_warning">🧲 Interferencia magnética: rumbo fixado co xiroscopio</string>
 
     <string-array name="cardinal_points">

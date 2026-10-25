@@ -23,6 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import com.tonetxo.galmap.R
 import com.tonetxo.galmap.data.FeatureType
@@ -32,6 +38,7 @@ import kotlin.math.roundToInt
 private const val MIN_RADIUS_KM = 5
 private const val MAX_RADIUS_KM = 40
 private const val RADIUS_STEP_KM = 5
+private const val OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
 
 private val ImportanceNames = intArrayOf(
     R.string.importance_all,
@@ -117,8 +124,24 @@ fun SettingsSheet(
                 }
             }
             Hint(stringResource(R.string.calibration_hint))
+
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+            OsmAttribution()
         }
     }
+}
+
+/** Required by the ODbL: the places come from OpenStreetMap, live or bundled. */
+@Composable
+private fun OsmAttribution() {
+    val text = stringResource(R.string.osm_attribution)
+    val linkStyle = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline))
+    Text(
+        buildAnnotatedString { withLink(LinkAnnotation.Url(OSM_COPYRIGHT_URL, linkStyle)) { append(text) } },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

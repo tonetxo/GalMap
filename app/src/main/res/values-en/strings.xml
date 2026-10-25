@@ -35,6 +35,7 @@
     <string name="align_button">Align</string>
     <string name="align_cancel">Cancel</string>
     <string name="show_on_map">Show on map</string>
+    <string name="osm_attribution">Data © OpenStreetMap contributors, under the ODbL</string>
     <string name="compass_warning">🧲 Magnetic interference: heading held by the gyroscope</string>
 
     <string-array name="cardinal_points">
