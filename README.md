@@ -33,6 +33,13 @@ empaquetado, e en calquera outro lugar descargando os datos de OpenStreetMap ao 
 ./gradlew test                   # tests unitarios
 ```
 
+### APK sen compilar en local
+
+Cada push a `main` pasa os tests e compila o APK en GitHub Actions. O APK descárgase
+como artefacto (`galmap-debug-…`) desde a execución correspondente na pestana
+[Actions](https://github.com/tonetxo/GalMap/actions). Tamén se pode lanzar a man con
+«Run workflow».
+
 ## Rexenerar o dataset offline
 
 O dataset descárgase de OpenStreetMap por teselas mediante a Overpass API e gárdase en
